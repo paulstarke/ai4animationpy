@@ -158,7 +158,6 @@ def main():
     parser.add_argument(
         "--skeleton",
         choices=["Cranberry", "Geno"],
-        default="Cranberry",
         required=False,
         help="Skeleton definition to use for bone filtering (default: Cranberry)",
     )

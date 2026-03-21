@@ -422,7 +422,9 @@ def Gaussian(
         # power = power.reshape(-1, *(1,)*(weight.ndim-1)) #expand dimensions with ones to match the dimensions of 'weight'
     weight = Pow(weight, power)
     values *= weight
-    values = Sum(values, -1, keepDim=True) / Sum(weight, -1, keepDim=True)
+    weight_sum = Sum(weight, -1, keepDim=True)
+    weight_sum = Maximum(weight_sum, 1e-6, backend=backend)  # Prevent division by zero
+    values = Sum(values, -1, keepDim=True) / weight_sum
 
     values = SwapAxes(values, axis, -1)
 

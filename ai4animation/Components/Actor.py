@@ -1,4 +1,5 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+import numpy as np
 from typing import List
 
 from ai4animation import Utility
@@ -9,35 +10,53 @@ from ai4animation.Math import Quaternion, Rotation, Tensor, Transform, Vector3
 class Actor(Component):
     def Start(self, params):
         model_path = params[0]
+        bone_names = params[1] if len(params) > 1 else None
+
         if model_path.lower().endswith(".fbx"):
             from ai4animation.Import.FBXImporter import FBX
             self.Model = FBX.Create(model_path)
         else:
             from ai4animation.Import.GLBImporter import GLB
             self.Model = GLB.Create(model_path)
+
+        if bone_names is None:
+            bone_names = self.Model.JointNames
+
         self.Entities = self.CreateEntities()
 
-        # Create Hierarchy
+        if bone_names is None:
+            bone_names = self.Model.JointNames
+
+        # create missing nodes on the fly
         self.Bones = []
         self.NameToBoneMap = {}
-        boneNames = params[1]
-        for i in range(len(boneNames)):
-            bone = self.Bone(self, i, self.Entity.FindChild(boneNames[i]))
-            self.Bones.append(bone)
-            self.NameToBoneMap[bone.Entity.Name] = bone
-        for bone in self.Bones:
-            parent = bone.Entity.FindParent(boneNames)
-            if parent:
-                bone.SetParent(self.GetBone(parent.Name))
 
-        # Initialize Values
+        for i, name in enumerate(bone_names):
+            entity = self.NameToEntity.get(name)
+            if entity is None:
+                entity = AI4Animation.Scene.AddEntity(name, position=None, rotation=None, parent=self.Entity)
+                self.NameToEntity[name] = entity
+
+            bone = self.Bone(self, i, entity)
+            self.Bones.append(bone)
+            self.NameToBoneMap[name] = bone
+
+        # parent-child relationships 
+        for bone in self.Bones:
+            parent_entity = bone.Entity.FindParent(bone_names)
+            if parent_entity is not None:
+                parent_bone = self.NameToBoneMap.get(parent_entity.Name)
+                if parent_bone is not None:
+                    bone.SetParent(parent_bone)
+
+        # Initialize
         self.Root = self.Entity.GetTransform()
         self.Transforms = AI4Animation.Scene.GetTransforms(self.GetBoneEntityIndices())
         self.Velocities = Vector3.Zero(self.GetBoneCount())
         for bone in self.Bones:
             bone.ComputeZeroTransform()
 
-        # Precomputed Values
+        # Precompute
         self.DefaultLengths = self.GetDefaultBoneLengths()
 
     def Update(self):
@@ -308,28 +327,37 @@ class Actor(Component):
         return chain
 
     def AssignZeroPose(self, names, Transforms, entity=None):
-        if entity.Name in names:
-            index = names.index(entity.Name)
-            entity.SetTransform(Transforms[index])
-        for child in entity.Children:
-            self.AssignZeroPose(names, Transforms, child)
+        if entity is None:
+            entity = self.Entity
+
+        name_to_index = {n: i for i, n in enumerate(names)}
+        stack = [entity]
+        while stack:
+            ent = stack.pop()
+            idx = name_to_index.get(ent.Name)
+            if idx is not None:
+                AI4Animation.Scene.Transforms[ent.Index] = Transforms[idx]
+            stack.extend(ent.Children)
 
     def CreateEntities(self):
-        names = self.Model.JointNames
-        parents = self.Model.JointParents
-        Transforms = self.Model.JointMatrices
-        entities = []
-        for i in range(len(names)):
-            entities.append(
-                AI4Animation.Scene.AddEntity(
-                    names[i], position=None, rotation=None, parent=self.Entity
-                )
-            )
-        for i in range(len(names)):
-            self.Entity.FindChild(names[i]).SetParent(
-                self.Entity if parents[i] is None else self.Entity.FindChild(parents[i])
-            )
-        self.AssignZeroPose(names, Transforms, self.Entity)
+        names, parents, transforms = (
+            self.Model.JointNames,
+            self.Model.JointParents,
+            self.Model.JointMatrices,
+        )
+
+        self.NameToEntity = {
+            name: AI4Animation.Scene.AddEntity(name, position=None, rotation=None, parent=self.Entity)
+            for name in names
+        }
+        entities = list(self.NameToEntity.values())
+
+        for name, parent_name in zip(names, parents):
+            parent = self.NameToEntity.get(parent_name)
+            if parent is not None:
+                self.NameToEntity[name].SetParent(parent)
+
+        self.AssignZeroPose(names, transforms, self.Entity)
         return entities
 
     def DrawHandles(self):
@@ -474,13 +502,22 @@ class Actor(Component):
             return Vector3.GetVector(self.Actor.Velocities, self.Index)
 
         def ComputeZeroTransform(self):
-            self.ZeroTransform = (
-                Transform.Identity()
-                if self.Parent is None
-                else Transform.TransformationTo(
+            if self.Parent is None:
+                self.ZeroTransform = Transform.Identity()
+                return
+
+            try:
+                self.ZeroTransform = Transform.TransformationTo(
                     self.GetTransform(), self.Parent.GetTransform()
                 )
-            )
+            except np.linalg.LinAlgError as e:
+                # Some models (especially GLB exports) may introduce singular or
+                # degenerate parent transforms (e.g. zero scale), which makes the
+                # inverse undefined. In that case we fall back to identity.
+                print(
+                    f"Warning: failed to compute zero pose for bone '{self.Entity.Name}' due to {type(e).__name__}: {e}"
+                )
+                self.ZeroTransform = Transform.Identity()
 
         def GetCurrentLength(self):
             return (

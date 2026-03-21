@@ -6,5 +6,6 @@ __all__ = [
     "Autoencoder",
     "Flow",
     "ConditionalFlow",
-    "CodebookMatching"
+    "CodebookMatching",
+    "CodebookMatchingRegularized"
 ]

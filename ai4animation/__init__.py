@@ -10,6 +10,7 @@ from .AI import DataSampler, FeedTensor, ONNXNetwork, Plotting, ReadTensor, Stat
 from .AI.Networks import (
     Autoencoder,
     CodebookMatching,
+    CodebookMatchingRegularized,
     ConditionalFlow,
     Flow,
     MLP,
@@ -106,6 +107,7 @@ __all__ = [
     "Flow",
     "ConditionalFlow",
     "CodebookMatching",
+    "CodebookMatchingRegularized",
     "AdamW",
     "CyclicScheduler",
     # Math

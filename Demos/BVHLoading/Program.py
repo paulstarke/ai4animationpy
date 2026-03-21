@@ -7,8 +7,7 @@ from ai4animation import (
     Actor,
     Vector3,
     Time,
-    Motion,
-    Transform
+    Motion
 )
 
 SCRIPT_DIR = Path(__file__).parent
@@ -29,7 +28,7 @@ class Program:
         bvh_path = os.path.join(str(SCRIPT_DIR), self.Filename + ".bvh")
         # fbx_path = os.path.join(str(SCRIPT_DIR), self.Filename + ".fbx")
         # npz_path = os.path.join(str(SCRIPT_DIR), self.Filename + ".npz")
-        model_path = os.path.join(ASSETS_PATH, "Model.fbx")
+        model_path = os.path.join(ASSETS_PATH, "Model.glb")
 
         self.BVHMotion = Motion.LoadFromBVH(bvh_path, scale=0.01)
         # self.FBXMotion = Motion.LoadFromFBX(fbx_path)

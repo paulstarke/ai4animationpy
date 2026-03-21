@@ -1,9 +1,8 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
 from pathlib import Path
 
 import pyray as pr
 import raylib as rl
-from ai4animation import AI4Animation
+from ai4animation import AI4Animation, Utility
 from ai4animation.Math import Rotation, Vector3
 
 # NOTE: Gamepad name ID depends on drivers and OS
@@ -82,6 +81,17 @@ def IsRightStickPressed():
         CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_RIGHT_THUMB
     )
 
+def IsL1Pressed():
+    LogErrorIfGamepadNotAvailable()
+    return pr.is_gamepad_button_pressed(
+        CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_LEFT_TRIGGER_1
+    )
+
+def IsR1Pressed():
+    LogErrorIfGamepadNotAvailable()
+    return pr.is_gamepad_button_pressed(
+        CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_RIGHT_TRIGGER_1
+    )
 
 def GetCurrentKey():
     key = rl.GetCharPressed()
@@ -112,6 +122,21 @@ def GetWASDQE():
     if rl.IsKeyDown(rl.KEY_E):
         input[1] += 1
     return Vector3.Create(input)
+
+
+# A secondary mapping to support keyboard approximation of two joysticks
+def GetIJKL():
+    x = 0
+    y = 0
+    if rl.IsKeyDown(rl.KEY_K):
+        y -= 1
+    if rl.IsKeyDown(rl.KEY_I):
+        y += 1
+    if rl.IsKeyDown(rl.KEY_J):
+        x -= 1
+    if rl.IsKeyDown(rl.KEY_L):
+        x += 1
+    return [x, y]
 
 
 def GetMousePositionOnScreen():  # Get mouse position XY in screen space
@@ -213,3 +238,48 @@ def DrawController(x, y, scale):
         int(inner * scale),
         right_stick_color,
     )
+
+
+def DrawWASDQE(x, y, scale):
+    DrawKeySet(
+        x, y, scale, [[rl.KEY_Q, rl.KEY_W, rl.KEY_E], [rl.KEY_A, rl.KEY_S, rl.KEY_D]]
+    )
+
+
+def DrawIJKL(x, y, scale):
+    DrawKeySet(x, y, scale, [[None, rl.KEY_I, None], [rl.KEY_J, rl.KEY_K, rl.KEY_L]])
+
+
+# Given a list of list of keys, draw a graphical representation of the key state
+def DrawKeySet(x, y, scale, keySet):
+    ratio = AI4Animation.Standalone.ScaleRatio()
+    x, y = AI4Animation.Standalone.ToScreen((x, y))
+    outer = 120 * ratio * scale
+    spacing = 20 * ratio * scale
+    border = 2
+
+    if isinstance(keySet, int):
+        keySet = [[keySet]]
+    elif isinstance(keySet[0], int):
+        keySet = [keySet]
+    for j, row in enumerate(keySet):
+        for i, key in enumerate(row):
+            if key is None:
+                continue
+            value = rl.IsKeyDown(key)
+            pos_x = x + (outer + spacing) * i
+            pos_y = y + (outer + spacing) * j
+            size = outer
+            pr.draw_rectangle_rounded([pos_x, pos_y, size, size], 0.2, 10, pr.DARKGRAY)
+            pos_x = x + (outer + spacing) * i + border
+            pos_y = y + (outer + spacing) * j + border
+            size = outer - 2 * border
+            color = pr.LIGHTGRAY if value else pr.GRAY
+            pr.draw_rectangle_rounded([pos_x, pos_y, size, size], 0.2, 10, color)
+            text = Utility.ToBytes(chr(key))
+            size = int(outer / 2)
+            w = rl.MeasureText(text, size)
+            h = size
+            pos_x = x + (outer + spacing) * i + outer / 2 - w / 2
+            pos_y = y + (outer + spacing) * j + outer / 2 - h / 2
+            rl.DrawText(text, int(pos_x), int(pos_y), size, rl.BLACK)
