@@ -6,7 +6,6 @@ import numpy as np
 import raylib as rl
 
 from pathlib import Path
-from ai4animation import *
 
 SCRIPT_DIR = Path(__file__).parent
 ASSETS_PATH = str(SCRIPT_DIR.parent / "_ASSETS_/Geno")
@@ -62,12 +61,12 @@ class Program:
         self.SolverIterations = 1
         self.SolverAccuracy = 1e-3
 
-        self.NetworkIterations = 1
+        self.NetworkIterations = 3
 
         self.Synchronization = 0.0
         self.Timescale = 1.0
 
-        self.TrajectoryCorrection = 0.0
+        self.TrajectoryCorrection = 0.25
         self.GuidanceCorrection = 0.0
 
         self.ControlSeries = TimeSeries(0.0, SEQUENCE_WINDOW, SEQUENCE_LENGTH)

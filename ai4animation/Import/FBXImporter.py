@@ -5,34 +5,53 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-try:
-    from fbx import (
-        FbxAMatrix,
-        FbxAnimLayer,
-        FbxAnimStack,
-        FbxAxisSystem,
-        FbxCriteria,
-        FbxDeformer,
-        FbxGeometryConverter,
-        FbxImporter,
-        FbxIOSettings,
-        FbxLayerElement,
-        FbxManager,
-        FbxScene,
-        FbxTime,
-        IOSROOT,
-    )
-except ImportError:
-    raise ImportError(
-        "Autodesk FBX SDK Python bindings not found.\n"
-        "Install guide:\n"
-        "  1. Download FBX SDK from https://aps.autodesk.com/developer/overview/fbx-sdk \n"
-        "  2. Download FBX SDK Python Bindings\n"
-        "  3. Set FBXSDK_ROOT env var to the FBX SDK install path (i.e. $env:FBXSDK_ROOT = \"C:\Program Files\Autodesk\FBX\FBX SDK\\2020.3.9\") \n"
-        "  4. Set FBXSDK_COMPILER env var (i.e. $env:FBXSDK_COMPILER=\"vs2022\")\n"
-        "  5. pip install --force-reinstall -v sip==6.6.2\n"
-        "  6. pip install . (in the Python Bindings folder)\n"
-    )
+def _ensure_fbx_sdk_loaded() -> None:
+    if "FbxManager" in globals():
+        return
+
+    try:
+        from fbx import (
+            FbxAnimLayer,
+            FbxAnimStack,
+            FbxAxisSystem,
+            FbxCriteria,
+            FbxDeformer,
+            FbxGeometryConverter,
+            FbxImporter,
+            FbxIOSettings,
+            FbxLayerElement,
+            FbxManager,
+            FbxScene,
+            FbxTime,
+            IOSROOT,
+        )
+    except ImportError as exc:
+        raise ImportError(
+            "Autodesk FBX SDK Python bindings not found.\n"
+            "Install guide:\n"
+            "  1. Download FBX SDK from https://aps.autodesk.com/developer/overview/fbx-sdk \n"
+            "  2. Download FBX SDK Python Bindings\n"
+            "  3. Set FBXSDK_ROOT env var to the FBX SDK install path (i.e. $env:FBXSDK_ROOT = \"C:\\Program Files\\Autodesk\\FBX\\FBX SDK\\\\2020.3.9\") \n"
+            "  4. Set FBXSDK_COMPILER env var (i.e. $env:FBXSDK_COMPILER=\"vs2022\")\n"
+            "  5. pip install --force-reinstall -v sip==6.6.2\n"
+            "  6. pip install . (in the Python Bindings folder)\n"
+        ) from exc
+
+    globals().update({
+        "FbxAnimLayer": FbxAnimLayer,
+        "FbxAnimStack": FbxAnimStack,
+        "FbxAxisSystem": FbxAxisSystem,
+        "FbxCriteria": FbxCriteria,
+        "FbxDeformer": FbxDeformer,
+        "FbxGeometryConverter": FbxGeometryConverter,
+        "FbxImporter": FbxImporter,
+        "FbxIOSettings": FbxIOSettings,
+        "FbxLayerElement": FbxLayerElement,
+        "FbxManager": FbxManager,
+        "FbxScene": FbxScene,
+        "FbxTime": FbxTime,
+        "IOSROOT": IOSROOT,
+    })
 
 from ai4animation.Animation.Motion import Hierarchy, Motion
 from ai4animation.Import.ModelImporter import Mesh, ModelImporter, Skin
@@ -250,6 +269,7 @@ def _extract_animation(flat_nodes, scene, anim_stack, timestamps, unit_scale):
 
 class FBX(ModelImporter):
     def __init__(self, path) -> None:
+        _ensure_fbx_sdk_loaded()
         self._path = path
 
         manager = FbxManager.Create()
