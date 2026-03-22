@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 from pathlib import Path
 
 import pyray as pr
@@ -91,6 +92,18 @@ def IsR1Pressed():
     LogErrorIfGamepadNotAvailable()
     return pr.is_gamepad_button_pressed(
         CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_RIGHT_TRIGGER_1
+    )
+
+def IsL2Pressed():
+    LogErrorIfGamepadNotAvailable()
+    return pr.is_gamepad_button_pressed(
+        CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_LEFT_TRIGGER_2
+    )
+
+def IsR2Pressed():
+    LogErrorIfGamepadNotAvailable()
+    return pr.is_gamepad_button_pressed(
+        CONTROLLER_ID, pr.GamepadButton.GAMEPAD_BUTTON_RIGHT_TRIGGER_2
     )
 
 def GetCurrentKey():
