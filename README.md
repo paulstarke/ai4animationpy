@@ -36,7 +36,17 @@ While both Standalone and Headless mode invoke automatic update callbacks, the M
 
 <img src ="Media/Architecture.png" width="100%">
 
+## Interactive Demos
+| | |
+|---|---|
+| ![Locomotion Demo](Media/Locomotion.gif) | ![Training Demo](Media/Training.gif) |
+| **Stylized Locomotion Controller** trained on style100 | **Future Motion Anticipation** with Interactive model training visualization |
+| ![ECS Demo](Media/ECS.gif) | ![IK Demo](Media/IK.gif) |
+| **ECS** — Entity hierarchy and component system | **Inverse Kinematics** — Real-time IK solving |
+| ![MocapImport Demo](Media/MocapImport.gif) | ![MotionEditor Demo](Media/MotionEditor.gif) |
+| **Motion Capture Import** — GLB/FBX/BVH/NPZ loading | **Motion Editor** — animation browsing and feature visualization|
 
+[View all demos  →](https://facebookresearch.github.io/ai4animationpy/tutorials/demos/)
 
 ## Why AI4AnimationPy?
 
