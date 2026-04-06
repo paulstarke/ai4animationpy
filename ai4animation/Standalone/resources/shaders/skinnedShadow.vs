@@ -1,6 +1,7 @@
 #version 300 es
 
 in vec3 vertexPosition;
+in vec2 vertexTexCoord;
 in vec4 vertexBoneIds;
 in vec4 vertexBoneWeights;
 
@@ -8,6 +9,8 @@ in vec4 vertexBoneWeights;
 uniform mat4 boneMatrices[MAX_BONE_NUM];
 
 uniform mat4 mvp;
+
+out vec2 fragTexCoord;
 
 void main()
 {
@@ -22,5 +25,6 @@ void main()
         vertexBoneWeights.z * (boneMatrices[boneIndex2] * vec4(vertexPosition, 1.0f)) +
         vertexBoneWeights.w * (boneMatrices[boneIndex3] * vec4(vertexPosition, 1.0f));
 
+    fragTexCoord = vertexTexCoord;
     gl_Position = mvp * vec4(skinnedPosition.xyz / skinnedPosition.w, 1.0f);
 }

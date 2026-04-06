@@ -82,6 +82,14 @@ def SymmetryIndices(joint_names):
             if TryAssign(boneName.replace("_right_", "_left_"), i):
                 continue
 
+        if "Left" in boneName:
+            if TryAssign(boneName.replace("Left", "Right"), i):
+                continue
+
+        if "Right" in boneName:
+            if TryAssign(boneName.replace("Right", "Left"), i):
+                continue
+
         symmetry[i] = i
     # for i, boneName in enumerate(joint_names):
     #    print(boneName, name_to_idx[boneName], joint_names[symmetry[i]])

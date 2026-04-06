@@ -264,12 +264,25 @@ class Motion:
         return GLB(absolute_path).LoadMotion(names=names, floor=floor)
 
     @classmethod
-    def LoadFromBVH(cls, absolute_path, scale=1.0, names=None, floor=None):
+    def LoadFromBVH(
+        cls,
+        absolute_path,
+        scale=1.0,
+        names=None,
+        floor=None,
+        mirror_axis: Vector3.Axis | None = None,
+        joint_corrections=None,
+    ):
         from ai4animation.Import.BVHImporter import BVH
 
         if not os.path.isfile(absolute_path):
             raise FileNotFoundError(f"BVH file not found: {absolute_path}")
-        return BVH(absolute_path, scale=scale).LoadMotion(names=names, floor=floor)
+        return BVH(
+            absolute_path,
+            scale=scale,
+            mirror_axis=mirror_axis,
+            joint_corrections=joint_corrections,
+        ).LoadMotion(names=names, floor=floor)
 
     @classmethod
     def LoadFromFBX(cls, absolute_path, names=None, floor=None):

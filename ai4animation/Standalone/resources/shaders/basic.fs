@@ -6,6 +6,7 @@ in vec2 fragTexCoord;
 in vec4 fragColor;
 in vec3 fragNormal;
 
+uniform sampler2D texture0;
 uniform vec4 colDiffuse;
 uniform float specularity;
 uniform float glossiness;
@@ -27,7 +28,14 @@ float LinearDepth(float depth, float near, float far)
 
 void main()
 {
-    vec3 albedo = FromGamma(fragColor.xyz * colDiffuse.xyz);
+    vec4 texel = texture(texture0, fragTexCoord);
+    float alpha = texel.a * fragColor.a * colDiffuse.a;
+    if (alpha < 0.2)
+    {
+        discard;
+    }
+
+    vec3 albedo = FromGamma(texel.xyz * fragColor.xyz * colDiffuse.xyz);
     float spec = specularity;
 
     gbufferColor = vec4(albedo, spec);

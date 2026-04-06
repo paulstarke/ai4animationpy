@@ -7,7 +7,102 @@ from typing import List, Optional
 
 from ai4animation import Utility
 from ai4animation.Animation.Motion import Motion
+from ai4animation.Math import Vector3
 from tqdm import tqdm
+
+CRANBERRY_BONE_NAMES = [
+    "b_root",
+    "b_l_upleg",
+    "b_l_leg",
+    "b_l_talocrural",
+    "b_l_subtalar",
+    "b_l_ball",
+    "b_r_upleg",
+    "b_r_leg",
+    "b_r_talocrural",
+    "b_r_subtalar",
+    "b_r_ball",
+    "b_spine0",
+    "b_spine1",
+    "b_spine2",
+    "b_spine3",
+    "b_neck0",
+    "b_head",
+    "b_l_shoulder",
+    "p_l_scap",
+    "b_l_arm",
+    "b_l_forearm",
+    "b_l_wrist_twist",
+    "b_l_wrist",
+    "b_r_shoulder",
+    "p_r_scap",
+    "b_r_arm",
+    "b_r_forearm",
+    "b_r_wrist_twist",
+    "b_r_wrist",
+]
+
+GENO_BONE_NAMES = [
+    "Hips",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "Spine3",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+]
+
+QUADRUPED_BONE_NAMES = [
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Neck",
+    "Head",
+    "HeadSite",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftHandSite",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightHandSite",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftFootSite",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightFootSite",
+    "Tail",
+    "Tail1",
+    "Tail1Site",
+]
+
+QUADRUPED_JOINT_CORRECTIONS = {
+    "Head": Vector3.Create(90.0, 0.0, 0.0),
+    "LeftShoulder": Vector3.Create(90.0, 0.0, 0.0),
+    "RightShoulder": Vector3.Create(90.0, 0.0, 0.0),
+}
 
 
 class BatchConverter:
@@ -30,7 +125,14 @@ class BatchConverter:
         if not os.path.exists(input_directory):
             raise FileNotFoundError(f"Input directory not found: {input_directory}")
 
-    def Run(self, bone_names, floor, bvh_scale=1.0) -> List[str]:
+    def Run(
+        self,
+        bone_names,
+        floor,
+        bvh_scale=1.0,
+        bvh_mirror_axis: Vector3.Axis | None = None,
+        bvh_joint_corrections=None,
+    ) -> List[str]:
         files = self.FindFiles()
         if not files:
             print(f"No GLB, FBX, or BVH files found in {self.input_directory}")
@@ -50,6 +152,8 @@ class BatchConverter:
                         bone_names,
                         floor,
                         bvh_scale,
+                        bvh_mirror_axis,
+                        bvh_joint_corrections,
                     ),
                 ): file
                 for file in files
@@ -78,7 +182,16 @@ class BatchConverter:
         return output_paths
 
     def ProcessFile(self, args):
-        filename, input_directory, output_directory, bone_names, floor, bvh_scale = args
+        (
+            filename,
+            input_directory,
+            output_directory,
+            bone_names,
+            floor,
+            bvh_scale,
+            bvh_mirror_axis,
+            bvh_joint_corrections,
+        ) = args
         try:
             filepath = os.path.join(input_directory, filename)
             ext = os.path.splitext(filename)[1].lower()
@@ -88,7 +201,14 @@ class BatchConverter:
             elif ext == ".fbx":
                 motion = Motion.LoadFromFBX(filepath, bone_names, floor)
             elif ext == ".bvh":
-                motion = Motion.LoadFromBVH(filepath, scale=bvh_scale, names=bone_names, floor=floor)
+                motion = Motion.LoadFromBVH(
+                    filepath,
+                    scale=bvh_scale,
+                    names=bone_names,
+                    floor=floor,
+                    mirror_axis=bvh_mirror_axis,
+                    joint_corrections=bvh_joint_corrections,
+                )
             else:
                 raise ValueError(f"Unsupported file format: {ext}")
 
@@ -135,12 +255,24 @@ class BatchConverter:
 
 
 def Run(
-    input_dir: str, output_dir: str = None, bone_names=None, floor=None, bvh_scale=1.0
+    input_dir: str,
+    output_dir: str = None,
+    bone_names=None,
+    floor=None,
+    bvh_scale=1.0,
+    bvh_mirror_axis: Vector3.Axis | None = None,
+    bvh_joint_corrections=None,
 ) -> List[str]:
     converter = BatchConverter(
         input_dir, output_dir, max_workers=Utility.GetNumWorkers()
     )
-    return converter.Run(bone_names, floor, bvh_scale=bvh_scale)
+    return converter.Run(
+        bone_names,
+        floor,
+        bvh_scale=bvh_scale,
+        bvh_mirror_axis=bvh_mirror_axis,
+        bvh_joint_corrections=bvh_joint_corrections,
+    )
 
 
 def main():
@@ -157,16 +289,23 @@ def main():
     )
     parser.add_argument(
         "--skeleton",
-        choices=["Cranberry", "Geno"],
+        choices=["Cranberry", "Geno", "Quadruped"],
         required=False,
-        help="Skeleton definition to use for bone filtering (default: Cranberry)",
+        help="Skeleton definition to use for bone filtering (default: Cranberry)"
     )
 
     parser.add_argument(
         "--bvh_scale",
         type=float,
         default=0.01,
-        help="Scale factor for BVH position data (e.g. 0.01 for centimeters)",
+        required=False,
+        help="Scale factor for BVH position data (e.g. 0.01 for centimeters)"
+    )
+    parser.add_argument(
+        "--bvh_mirror_axis",
+        choices=[axis.name for axis in Vector3.Axis],
+        required=False,
+        help="Optional mirror axis for BVH import handedness correction."
     )
 
     args = parser.parse_args()
@@ -177,69 +316,33 @@ def main():
     )
     # os.makedirs(output_dir, exist_ok=True)
 
-    # bone names
+    # preset settings
     bone_names = None
     floor = None
-    if args.skeleton == "Cranberry":
-        bone_names = [
-            "b_root",
-            "b_l_upleg",
-            "b_l_leg",
-            "b_l_talocrural",
-            "b_l_subtalar",
-            "b_l_ball",
-            "b_r_upleg",
-            "b_r_leg",
-            "b_r_talocrural",
-            "b_r_subtalar",
-            "b_r_ball",
-            "b_spine0",
-            "b_spine1",
-            "b_spine2",
-            "b_spine3",
-            "b_neck0",
-            "b_head",
-            "b_l_shoulder",
-            "p_l_scap",
-            "b_l_arm",
-            "b_l_forearm",
-            "b_l_wrist_twist",
-            "b_l_wrist",
-            "b_r_shoulder",
-            "p_r_scap",
-            "b_r_arm",
-            "b_r_forearm",
-            "b_r_wrist_twist",
-            "b_r_wrist",
-        ]
-    elif args.skeleton == "Geno":
-        bone_names = [
-            "Hips",
-            "LeftUpLeg",
-            "LeftLeg",
-            "LeftFoot",
-            "LeftToeBase",
-            "RightUpLeg",
-            "RightLeg",
-            "RightFoot",
-            "RightToeBase",
-            "Spine",
-            "Spine1",
-            "Spine2",
-            "Spine3",
-            "Neck",
-            "Head",
-            "LeftShoulder",
-            "LeftArm",
-            "LeftForeArm",
-            "LeftHand",
-            "RightShoulder",
-            "RightArm",
-            "RightForeArm",
-            "RightHand",
-        ]
+    bvh_joint_corrections = None
+    bvh_mirror_axis = None
 
-    Run(args.input_dir, output_dir, bone_names=bone_names, floor=floor, bvh_scale=args.bvh_scale)
+    if args.skeleton == "Cranberry":
+        bone_names = CRANBERRY_BONE_NAMES
+    elif args.skeleton == "Geno":
+        bone_names = GENO_BONE_NAMES
+    elif args.skeleton == "Quadruped":
+        bone_names = QUADRUPED_BONE_NAMES
+        bvh_mirror_axis = Vector3.Axis.XPositive
+        bvh_joint_corrections = QUADRUPED_JOINT_CORRECTIONS
+
+    if args.bvh_mirror_axis is not None:
+        bvh_mirror_axis = Vector3.Axis[args.bvh_mirror_axis]
+
+    Run(
+        args.input_dir,
+        output_dir,
+        bone_names=bone_names,
+        floor=floor,
+        bvh_scale=args.bvh_scale,
+        bvh_mirror_axis=bvh_mirror_axis,
+        bvh_joint_corrections=bvh_joint_corrections,
+    )
     return 0
 
 

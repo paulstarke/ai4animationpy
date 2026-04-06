@@ -2,6 +2,7 @@
 **/GLB
 **/FBX
 **/Data
+**/Mocap
 **/Assets/**.pt
 **/Assets/**.npz
 **/Training/**.pt

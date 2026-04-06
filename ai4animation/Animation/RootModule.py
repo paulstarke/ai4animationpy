@@ -1,4 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+from enum import Enum
+
 from ai4animation import Utility
 from ai4animation.AI4Animation import AI4Animation
 from ai4animation.Animation.Module import Module
@@ -8,6 +10,10 @@ from ai4animation.Math import Rotation, Tensor, Transform, Vector3
 
 
 class RootModule(Module):
+    class Topology(Enum):
+        BIPED = "biped"
+        QUADRUPED = "quadruped"
+
     def __init__(
         self,
         motion: Motion,
@@ -16,12 +22,21 @@ class RootModule(Module):
         right_hip,
         left_shoulder,
         right_shoulder,
+        neck,
+        topology=Topology.BIPED,
     ) -> None:
         super().__init__(motion)
-        self.BoneIndices = motion.GetBoneIndices(
-            [hip, left_hip, right_hip, left_shoulder, right_shoulder]
+
+        self.Topology = (
+            topology
+            if isinstance(topology, RootModule.Topology)
+            else RootModule.Topology(str(topology).lower())
         )
-        self.Hip, self.LeftHip, self.RightHip, self.LeftShoulder, self.RightShoulder = (
+
+        self.BoneIndices = motion.GetBoneIndices(
+            [hip, left_hip, right_hip, left_shoulder, right_shoulder, neck]
+        )
+        self.Hip, self.LeftHip, self.RightHip, self.LeftShoulder, self.RightShoulder, self.Neck = (
             self.BoneIndices
         )
 
@@ -125,7 +140,7 @@ class RootModule(Module):
         deltaTime=None,
         smoothing: TimeSeries = None,
     ):
-        dt = deltaTime if deltaTime is None else self.Motion.DeltaTime
+        dt = self.Motion.DeltaTime if deltaTime is None else deltaTime
         timestamps = Tensor.Clamp(
             Tensor.Concat((timestamps[..., :1] - dt, timestamps), -1),
             0,
@@ -163,6 +178,7 @@ class RootModule(Module):
         right_hip_pos = bone_positions[..., 2, :]
         left_shoulder_pos = bone_positions[..., 3, :]
         right_shoulder_pos = bone_positions[..., 4, :]
+        neck_pos = bone_positions[..., 5, :]
 
         # root positions
         root_positions = Tensor.ZerosLike(hip_pos)
@@ -173,21 +189,27 @@ class RootModule(Module):
         # root rotations
         up_batch = Tensor.ZerosLike(hip_pos)
         up_batch[..., 1] = 1.0
-        hip_batch = left_hip_pos - right_hip_pos
-        shoulder_batch = left_shoulder_pos - right_shoulder_pos
 
-        # Project on horizontal plane: v - (v·up)up
-        hip_dot_up = Tensor.Unsqueeze(Tensor.Dot(hip_batch, up_batch), -1)
-        hip_batch_projected = hip_batch - hip_dot_up * up_batch
-        hip_batch_normalized = Tensor.Normalize(hip_batch_projected)
-        shoulder_dot_up = Tensor.Unsqueeze(Tensor.Dot(shoulder_batch, up_batch), -1)
-        shoulder_batch_projected = shoulder_batch - shoulder_dot_up * up_batch
-        shoulder_batch_normalized = Tensor.Normalize(shoulder_batch_projected)
+        if self.Topology == RootModule.Topology.QUADRUPED:
+            forward_batch = neck_pos - hip_pos
+        else:
+            hip_batch = left_hip_pos - right_hip_pos
+            shoulder_batch = left_shoulder_pos - right_shoulder_pos
 
-        averaged_batch = (hip_batch_normalized + shoulder_batch_normalized) * 0.5
-        averaged_batch_normalized = Tensor.Normalize(averaged_batch)
+            # Project on horizontal plane: v - (v·up)up
+            hip_dot_up = Tensor.Unsqueeze(Tensor.Dot(hip_batch, up_batch), -1)
+            hip_batch_projected = hip_batch - hip_dot_up * up_batch
+            hip_batch_normalized = Tensor.Normalize(hip_batch_projected)
+            shoulder_dot_up = Tensor.Unsqueeze(
+                Tensor.Dot(shoulder_batch, up_batch), -1
+            )
+            shoulder_batch_projected = shoulder_batch - shoulder_dot_up * up_batch
+            shoulder_batch_normalized = Tensor.Normalize(shoulder_batch_projected)
 
-        forward_batch = Tensor.Cross(averaged_batch_normalized, up_batch)
+            averaged_batch = (hip_batch_normalized + shoulder_batch_normalized) * 0.5
+            averaged_batch_normalized = Tensor.Normalize(averaged_batch)
+
+            forward_batch = Tensor.Cross(averaged_batch_normalized, up_batch)
 
         # Project forward on horizontal plane and normalize
         forward_dot_up = Tensor.Unsqueeze(Tensor.Dot(forward_batch, up_batch), -1)

@@ -1,21 +1,44 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 from array import array
+from io import BytesIO
 
 import cffi
 import numpy as np
 from ai4animation.AI4Animation import AI4Animation
 from ai4animation.Math import Tensor
-from pyray import load_model_from_mesh, Matrix, Mesh
+from pyray import Matrix, Mesh, load_model_from_mesh
 from raylib import (
+    LoadImageFromMemory,
+    LoadTextureFromImage,
     MATERIAL_MAP_DIFFUSE,
     MatrixIdentity,
     MemAlloc,
     RAYWHITE,
+    SetMaterialTexture,
+    UnloadImage,
     UploadMesh,
     WHITE,
 )
 
 ffi = cffi.FFI()
+
+
+def _create_texture_from_image(image):
+    if image is None:
+        return None
+
+    encoded = BytesIO()
+    image.convert("RGBA").save(encoded, format="PNG")
+    image_bytes = encoded.getvalue()
+
+    raylib_image = LoadImageFromMemory(
+        b".png",
+        ffi.from_buffer("unsigned char[]", image_bytes),
+        len(image_bytes),
+    )
+    texture = LoadTextureFromImage(raylib_image)
+    UnloadImage(raylib_image)
+    return texture
 
 
 class SkinnedMesh:
@@ -30,6 +53,7 @@ class SkinnedMesh:
 
         self.Models = []
         self.BoneMatrixViews = []
+        self.Textures = []
         self.Color = RAYWHITE
 
         print(
@@ -53,7 +77,10 @@ class SkinnedMesh:
             vertices = array("f", mesh.Vertices.flatten())
             normals = array("f", mesh.Normals.flatten())
             triangles = array("H", mesh.Triangles.flatten().astype(np.uint16))
-            texcoords = array("f", [0.5, 0.5] * vertexCount)
+            if getattr(mesh, "TexCoords", None) is not None and len(mesh.TexCoords) == vertexCount:
+                texcoords = array("f", np.asarray(mesh.TexCoords, dtype=np.float32).flatten())
+            else:
+                texcoords = array("f", [0.5, 0.5] * vertexCount)
 
             # 4 bones per vertex
             boneIds = np.zeros((vertexCount, 4), dtype=np.uint8)
@@ -91,17 +118,26 @@ class SkinnedMesh:
             UploadMesh(ffi.addressof(raylib_mesh), True)
 
             # Create Model for this mesh
-            model = load_model_from_mesh(raylib_mesh)
-            model.materials[0].maps[MATERIAL_MAP_DIFFUSE].color = WHITE
+            raylib_model = load_model_from_mesh(raylib_mesh)
+            raylib_model.materials[0].maps[MATERIAL_MAP_DIFFUSE].color = WHITE
 
-            self.Models.append(model)
+            texture = _create_texture_from_image(getattr(mesh, "Image", None))
+            if texture is not None:
+                SetMaterialTexture(
+                    ffi.addressof(raylib_model.materials[0]),
+                    MATERIAL_MAP_DIFFUSE,
+                    texture,
+                )
+                self.Textures.append(texture)
+
+            self.Models.append(raylib_model)
 
             # Cache numpy view of bone matrices for efficient updates
-            mesh = model.meshes[0]
+            gpu_mesh = raylib_model.meshes[0]
             matView = np.frombuffer(
-                ffi.buffer(mesh.boneMatrices, mesh.boneCount * ffi.sizeof(Matrix())),
+                ffi.buffer(gpu_mesh.boneMatrices, gpu_mesh.boneCount * ffi.sizeof(Matrix())),
                 dtype=np.float32,
-            ).reshape(mesh.boneCount, 4, 4)
+            ).reshape(gpu_mesh.boneCount, 4, 4)
             self.BoneMatrixViews.append(matView)
 
         print(

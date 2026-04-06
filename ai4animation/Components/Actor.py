@@ -11,6 +11,7 @@ class Actor(Component):
     def Start(self, params):
         model_path = params[0]
         bone_names = params[1] if len(params) > 1 else None
+        self.ShowGUI = params[2] if len(params) > 2 else True
 
         if model_path.lower().endswith(".fbx"):
             from ai4animation.Import.FBXImporter import FBX
@@ -365,6 +366,17 @@ class Actor(Component):
             bone.DrawHandle()
 
     def Standalone(self):
+        self.SkinnedMesh = AI4Animation.Standalone.CreateSkinnedMesh(self, self.Model)
+
+        if not self.ShowGUI:
+            self.Canvas = None
+            self.Button_Root = None
+            self.Button_Skeleton = None
+            self.Button_Velocities = None
+            self.Button_Mesh = None
+            self.Button_Labels = None
+            return
+
         self.Canvas = AI4Animation.GUI.Canvas("Actor", 0.01, 0.3, 0.125, 0.25)
         self.Button_Root = AI4Animation.GUI.Button(
             "Show Root", 0.05, 0.15, 0.9, 0.125, False, True, self.Canvas
@@ -382,9 +394,10 @@ class Actor(Component):
             "Show Labels", 0.05, 0.75, 0.9, 0.125, False, True, self.Canvas
         )
 
-        self.SkinnedMesh = AI4Animation.Standalone.CreateSkinnedMesh(self, self.Model)
-
     def Draw(self):
+        if not self.ShowGUI:
+            return
+
         boneSize = 0.0175
         if self.Button_Root.Active:
             AI4Animation.Draw.Transform(self.Root, 0.5)
@@ -407,6 +420,9 @@ class Actor(Component):
             )
 
     def GUI(self):
+        if not self.ShowGUI:
+            return
+
         self.Canvas.GUI()
         self.Button_Root.GUI()
         self.Button_Skeleton.GUI()

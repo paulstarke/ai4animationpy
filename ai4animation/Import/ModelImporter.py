@@ -26,7 +26,17 @@ class Skin:
 
 
 class Mesh:
-    def __init__(self, name, vertices, normals, triangles, skin_indices, skin_weights):
+    def __init__(
+        self,
+        name,
+        vertices,
+        normals,
+        triangles,
+        skin_indices,
+        skin_weights,
+        texcoords=None,
+        image=None,
+    ):
         self.Name = name
         self.Vertices = vertices
         self.VertexCount = self.Vertices.shape[0]
@@ -35,6 +45,12 @@ class Mesh:
         self.TriangleCount = int(triangles.shape[0] / 3)
         self.SkinIndices = skin_indices
         self.SkinWeights = skin_weights
+        self.TexCoords = (
+            texcoords
+            if texcoords is not None
+            else np.zeros((self.VertexCount, 2), dtype=np.float32)
+        )
+        self.Image = image
         self.HasSkinning = (
             self.SkinIndices is not None
             and self.SkinWeights is not None

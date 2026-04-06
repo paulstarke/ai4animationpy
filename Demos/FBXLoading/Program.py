@@ -25,7 +25,7 @@ class Program:
 
     def Start(self):
         self.Motion = Motion.LoadFromFBX(self.Filename)
-        self.RootModule = RootModule(self.Motion, Definitions.HipName, Definitions.LeftHipName, Definitions.RightHipName, Definitions.LeftShoulderName, Definitions.RightShoulderName)
+        self.RootModule = RootModule(self.Motion, Definitions.HipName, Definitions.LeftHipName, Definitions.RightHipName, Definitions.LeftShoulderName, Definitions.RightShoulderName, Definitions.NeckName)
 
         self.Mirror = False
         self.Pose = None

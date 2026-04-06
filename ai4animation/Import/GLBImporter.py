@@ -160,33 +160,45 @@ def parse_texcoords(primitive: Primitive, glb: GLTF2) -> Dict[int, NDArray]:
 def parse_material(
     primitive: Primitive, glb: GLTF2, image_cache: Dict[int, Image.Image]
 ) -> Tuple[int, Image.Image]:
+    default_image = Image.new("RGBA", (1, 1), color=(255, 255, 255, 255))
     material_id = primitive.material
 
     if material_id is None or glb.materials is None:
-        return -1, Image.new("RGB", (1, 1))
+        return -1, default_image
 
     material = glb.materials[material_id]  # pyre-ignore
+    pbr = material.pbrMetallicRoughness
+    if pbr is None or pbr.baseColorTexture is None or glb.textures is None:
+        return -1, default_image
 
-    if material.pbrMetallicRoughness.baseColorTexture is None:
-        return -1, Image.new("RGB", (1, 1))
+    texture_info = pbr.baseColorTexture
+    texture_id = texture_info.index
+    texcoord_i = texture_info.texCoord or 0
 
-    image_id = material.pbrMetallicRoughness.baseColorTexture.index
-    texcoord_i = material.pbrMetallicRoughness.baseColorTexture.texCoord
+    if texture_id is None:
+        return -1, default_image
+
+    texture = glb.textures[texture_id]
+    image_id = texture.source
+    if image_id is None:
+        return texcoord_i, default_image
 
     if image_id in image_cache:
         return texcoord_i, image_cache[image_id]
 
     image = glb.images[image_id]
+    if image.bufferView is not None:
+        buffer_view = glb.bufferViews[image.bufferView]
+        buffer = glb.buffers[buffer_view.buffer]
+        data = glb.get_data_from_buffer_uri(buffer.uri)
+        loc = buffer_view.byteOffset or 0
+        image_data = data[loc : loc + buffer_view.byteLength]
+    elif image.uri is not None:
+        image_data = glb.get_data_from_buffer_uri(image.uri)
+    else:
+        return texcoord_i, default_image
 
-    buffer_view = glb.bufferViews[image.bufferView]
-    buffer = glb.buffers[buffer_view.buffer]
-
-    data = glb.get_data_from_buffer_uri(buffer.uri)
-    loc = buffer_view.byteOffset or 0
-    image_data = data[loc : loc + buffer_view.byteLength]
-
-    image_cache[image_id] = Image.open(BytesIO(image_data))
-
+    image_cache[image_id] = Image.open(BytesIO(image_data)).convert("RGBA")
     return texcoord_i, image_cache[image_id]
 
 
@@ -339,6 +351,9 @@ class GLB(ModelImporter):
 
                 texcoord_i, image = parse_material(primitive, self._glb, images)
                 assert texcoord_i == -1 or texcoord_i in texcoords, texcoords
+                selected_texcoords = texcoords.get(texcoord_i)
+                if selected_texcoords is None or selected_texcoords.shape[0] != num_vertices:
+                    selected_texcoords = np.zeros((num_vertices, 2), dtype=np.float32)
 
                 name = mesh_obj.name or ""
                 if i > 0:
@@ -351,9 +366,9 @@ class GLB(ModelImporter):
                     triangles=np.array(mesh_triangles).astype(np.int64),
                     skin_indices=np.array(skin_joint_indices).astype(np.int64),
                     skin_weights=np.array(skin_joint_weights).astype(np.float32),
+                    texcoords=np.array(selected_texcoords).astype(np.float32),
+                    image=image,
                 )
-                mesh.TexCoord = texcoord_i if texcoord_i != -1 else np.zeros(0)
-                mesh.Image = image
 
                 meshes.append(mesh)
 

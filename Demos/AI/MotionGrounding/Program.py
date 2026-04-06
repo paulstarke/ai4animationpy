@@ -65,6 +65,7 @@ class Program:
                     Definitions.RightHipName,
                     Definitions.LeftShoulderName,
                     Definitions.RightShoulderName,
+                    Definitions.NeckName,
                 ),
                 lambda x: MotionModule(x),
             ],
