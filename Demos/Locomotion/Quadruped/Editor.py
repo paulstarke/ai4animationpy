@@ -11,10 +11,6 @@ from ai4animation import (
     MotionModule,
     GuidanceModule,
     RootModule,
-    Rotation,
-    Vector3,
-    Hierarchy,
-    Motion
 )
 
 SCRIPT_DIR = Path(__file__).parent
@@ -28,7 +24,7 @@ class Program:
     def Start(self):
         editor = AI4Animation.Scene.AddEntity("MotionEditor")
         self.dataset = Dataset(
-                os.path.join(ASSETS_PATH, "Mocap"),
+                os.path.join(ASSETS_PATH, "Motions"),
                 [
                     lambda x: RootModule(
                         x,

@@ -1,11 +1,6 @@
-# pyre-unsafe
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-from pathlib import Path
 
 from setuptools import find_packages, setup
-
-this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
 
 _packages = find_packages()
 
@@ -13,8 +8,6 @@ setup(
     name="ai4animation",
     version="1.0.0",
     description="AI4Animation Python Framework - Neural network-based character animation",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     author="Paul Starke, Sebastian Starke",
     packages=_packages,
     package_dir={
