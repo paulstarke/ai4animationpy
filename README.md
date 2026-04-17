@@ -45,10 +45,16 @@ While both Standalone and Headless mode invoke automatic update callbacks, the M
 | **Future Motion Anticipation** with Interactive model training visualization | **ECS** — Entity hierarchy and component system |
 | ![IK Demo](Media/IK.gif) | ![MocapImport Demo](Media/MocapImport.gif) |
 | **Inverse Kinematics** — Real-time IK solving | **Motion Capture Import** — GLB/FBX/BVH/NPZ loading |
-| ![MotionEditor Demo](Media/MotionEditor.gif) | |
+| ![MotionEditor Demo](Media/MotionEditor.gif) | <div align="center"><br/><a href="https://facebookresearch.github.io/ai4animationpy/tutorials/demos/"><strong>View all demos →</strong></a></div> |
 | **Motion Editor** — animation browsing and feature visualization| |
 
-[View all demos  →](https://facebookresearch.github.io/ai4animationpy/tutorials/demos/)
+<div align="center"><a href="https://paulstarke-ai4animationpy.hf.space/" style="display: inline-block; padding: 12px 24px; background-color: #0366d6; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px;">Play Web Demos</a> <br> <br>
+
+<a href="https://youtu.be/qifmLpNzVzI?si=DmKrpsNhBO3vsCbW">
+<img src="Media/WebDemos.png" width="75%" alt="AI4AnimationPy Demo Video">
+</a>
+
+</div>
 
 ## Why AI4AnimationPy?
 
